@@ -1,38 +1,24 @@
-def preprocess_image(image):
-    # Convert the image to YUV (Luminance and Chrominance) color space
-    yuv_img = cv2.cvtColor(image, cv2.COLOR_BGR2YUV)
-    
-    # Equalize the histogram of the Y channel (brightness)
-    yuv_img[:, :, 0] = cv2.equalizeHist(yuv_img[:, :, 0])
-    
-    # Convert back to BGR
-    processed_image = cv2.cvtColor(yuv_img, cv2.COLOR_YUV2BGR)
-    return processed_image
+def classify_color_hsv(bgr):
+    # Convert BGR to HSV
+    hsv = cv2.cvtColor(np.uint8([[bgr]]), cv2.COLOR_BGR2HSV)[0][0]
 
-image = cv2.imread('car_image.jpg')
-processed_image = preprocess_image(image)
+    # Define color ranges in HSV
+    colors = {
+        'red': [(0, 50, 50), (10, 255, 255), (160, 50, 50), (180, 255, 255)],  # Red wraps around
+        'orange': [(10, 50, 50), (25, 255, 255)],
+        'yellow': [(25, 50, 50), (35, 255, 255)],
+        'green': [(35, 50, 50), (85, 255, 255)],
+        'cyan': [(85, 50, 50), (95, 255, 255)],
+        'blue': [(95, 50, 50), (135, 255, 255)],
+        'purple': [(135, 50, 50), (160, 255, 255)],
+        'white': [(0, 0, 200), (180, 30, 255)],
+        'gray': [(0, 0, 50), (180, 30, 200)],
+        'black': [(0, 0, 0), (180, 255, 50)]
+    }
 
-def get_dominant_color_hsv(image, k=5):
-    # Convert the image to HSV
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    # Reshape the image to be a list of pixels
-    pixels = hsv_image.reshape((-1, 3))
-    
-    # Apply KMeans clustering
-    kmeans = KMeans(n_clusters=k)
-    kmeans.fit(pixels)
-    
-    # Get the cluster center with the maximum count
-    centers = kmeans.cluster_centers_
-    labels = kmeans.labels_
-    counts = np.bincount(labels)
-    dominant_index = np.argmax(counts)
-    dominant_color_hsv = centers[dominant_index]
-    
-    # Convert the dominant color back to RGB
-    dominant_color_rgb = cv2.cvtColor(np.uint8([[dominant_color_hsv]]), cv2.COLOR_HSV2BGR)[0][0]
-    return dominant_color_rgb
-
-dominant_color = get_dominant_color_hsv(processed_image, k=5)
-print(f"The dominant color (RGB) is: {dominant_color}")
+    # Check which range the hue falls into
+    for color, ranges in colors.items():
+        for i in range(0, len(ranges), 2):
+            if ranges[i][0] <= hsv[0] <= ranges[i+1][0] and ranges[i][1] <= hsv[1] <= ranges[i+1][1] and ranges[i][2] <= hsv[2] <= ranges[i+1][2]:
+                return color
+    return 'unknown'
